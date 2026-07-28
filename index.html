@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ghost Rack — Product Photo Cleanup</title>
+<style>
+  :root{
+    --bg: #efece5;
+    --panel: #f8f6f1;
+    --ink: #23241f;
+    --ink-soft: #6b6a63;
+    --indigo: #22285a;
+    --indigo-soft: #454b7c;
+    --olive: #6b7a3a;
+    --line: #d8d4c8;
+    --white: #fffdf9;
+    --error: #a33d2d;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top, #f6f3ec 0%, var(--bg) 55%, #e6e2d6 100%);
+    color:var(--ink);
+    font-family: 'Iowan Old Style','Palatino Linotype',Georgia,serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:48px 28px 80px;}
+
+  header{margin-bottom:40px;}
+  .eyebrow{
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size:11px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--olive);
+    margin-bottom:10px;
+  }
+  h1{
+    font-size:42px;
+    line-height:1.05;
+    margin:0 0 14px;
+    font-weight:600;
+    color:var(--indigo);
+    letter-spacing:-0.01em;
+  }
+  .sub{
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    font-size:15px;
+    color:var(--ink-soft);
+    max-width:560px;
+    line-height:1.55;
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:28px;
+    margin-bottom:24px;
+  }
+  .card + .card{ }
+
+  label.field-label{
+    display:block;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size:11px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  input[type="password"], textarea{
+    width:100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    font-size:14px;
+    padding:11px 13px;
+    border:1px solid var(--line);
+    border-radius:2px;
+    background:var(--white);
+    color:var(--ink);
+  }
+  textarea{resize:vertical;min-height:70px;line-height:1.5;}
+  .hint{
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:8px;
+    line-height:1.5;
+  }
+  .hint a{color:var(--indigo-soft);}
+
+  .row{display:flex;gap:24px;flex-wrap:wrap;}
+  .row > div{flex:1;min-width:240px;}
+
+  .dropzone{
+    border:1.5px dashed var(--line);
+    border-radius:2px;
+    background:var(--white);
+    padding:36px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  }
+  .dropzone:hover, .dropzone.drag{
+    border-color:var(--olive);
+    background:#faf9f4;
+  }
+  .dropzone .big{font-size:15px;color:var(--ink);margin-bottom:4px;}
+  .dropzone .small{font-size:12.5px;color:var(--ink-soft);}
+  input[type=file]{display:none;}
+
+  button.run{
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size:12.5px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    background:var(--indigo);
+    color:var(--white);
+    border:none;
+    padding:14px 22px;
+    border-radius:2px;
+    cursor:pointer;
+    margin-top:18px;
+    transition:background .15s ease;
+  }
+  button.run:hover{background:var(--indigo-soft);}
+  button.run:disabled{background:#b6b3a8;cursor:not-allowed;}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+    gap:18px;
+    margin-top:20px;
+  }
+  .tile{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:2px;
+    overflow:hidden;
+  }
+  .tile .imgs{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  .tile .imgs img{width:100%;height:150px;object-fit:contain;background:#f1efe9;display:block;}
+  .tile .imgs .cell{position:relative;}
+  .tile .imgs .cell .tag{
+    position:absolute;top:6px;left:6px;
+    font-family: ui-monospace, monospace;
+    font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+    background:rgba(35,36,31,.72);color:#fff;padding:2px 6px;border-radius:2px;
+  }
+  .tile .meta{
+    padding:12px 14px 14px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  }
+  .tile .fname{font-size:12.5px;color:var(--ink);margin-bottom:8px;word-break:break-all;}
+  .tile .status{font-size:12px;color:var(--ink-soft);}
+  .tile .status.err{color:var(--error);}
+  .tile .dl{
+    display:inline-block;
+    margin-top:8px;
+    font-family: ui-monospace, monospace;
+    font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--olive);
+    text-decoration:none;
+    border-bottom:1px solid var(--olive);
+    padding-bottom:1px;
+  }
+  .spinner{
+    width:14px;height:14px;
+    border:2px solid var(--line);
+    border-top-color:var(--olive);
+    border-radius:50%;
+    display:inline-block;
+    animation:spin .7s linear infinite;
+    vertical-align:middle;
+    margin-right:6px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  footer{
+    margin-top:36px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    font-size:12px;
+    color:var(--ink-soft);
+    line-height:1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Ghost Rack · Product Photo Cleanup</div>
+    <h1>Off the mannequin,<br>onto the rail.</h1>
+    <div class="sub">Upload mannequin or model shots. Each one comes back with the stand removed and a soft off-white studio backdrop — ready for the shop front.</div>
+  </header>
+
+  <div class="card">
+    <label class="field-label">Gemini API key</label>
+    <input type="password" id="apiKey" placeholder="Paste your Google AI Studio API key" autocomplete="off">
+    <div class="hint">Kept in this browser tab only — never saved or sent anywhere but Google's API. Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>. The free tier covers a good batch before any cost kicks in.</div>
+  </div>
+
+  <div class="card">
+    <label class="field-label">Instruction sent with every photo</label>
+    <textarea id="prompt">Remove the mannequin or model entirely from this photo. Keep the garment's exact shape, drape, folds, color and pattern unchanged — display it as if worn by an invisible body, floating naturally the way it falls on a form. Place it on a solid soft off-white studio backdrop with a very subtle warm gradient (lighter in the center, slightly darker toward the edges), matching professional e-commerce product photography. No shadows on a hard floor, no visible stand, no text or watermark.</textarea>
+    <div class="hint">Edit this if a batch needs different handling (e.g. keep a subtle shadow, or use pure white instead of the gradient).</div>
+  </div>
+
+  <div class="card">
+    <label class="field-label">Photos</label>
+    <div class="dropzone" id="dropzone">
+      <div class="big">Drop photos here, or click to choose</div>
+      <div class="small">JPG or PNG · multiple files at once</div>
+      <input type="file" id="fileInput" accept="image/*" multiple>
+    </div>
+    <button class="run" id="runBtn" disabled>Process photos</button>
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <footer>
+    Built for shop photos — Kantgh listings, Siknstylish, Triple L Clothing. Runs entirely in this browser tab; nothing is uploaded anywhere except directly to Google's Gemini API using your own key.
+  </footer>
+
+</div>
+
+<script>
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const runBtn = document.getElementById('runBtn');
+const grid = document.getElementById('grid');
+const apiKeyInput = document.getElementById('apiKey');
+const promptInput = document.getElementById('prompt');
+
+let files = [];
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+function handleFiles(fileList){
+  files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+  renderGrid();
+  runBtn.disabled = files.length === 0;
+}
+
+function renderGrid(){
+  grid.innerHTML = '';
+  files.forEach((file, idx) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.id = 'tile-' + idx;
+    const url = URL.createObjectURL(file);
+    tile.innerHTML = `
+      <div class="imgs">
+        <div class="cell"><span class="tag">Before</span><img src="${url}"></div>
+        <div class="cell result-cell"><span class="tag">After</span><img class="result-img" style="display:none"></div>
+      </div>
+      <div class="meta">
+        <div class="fname"></div>
+        <div class="status">Waiting</div>
+      </div>
+    `;
+    tile.querySelector('.fname').textContent = file.name;
+    grid.appendChild(tile);
+  });
+}
+
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = () => reject(new Error('Could not read file'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function processOne(file, idx, apiKey, promptText){
+  const tile = document.getElementById('tile-' + idx);
+  const status = tile.querySelector('.status');
+  status.classList.remove('err');
+  status.innerHTML = '<span class="spinner"></span>Sending to Gemini…';
+
+  try{
+    const base64 = await fileToBase64(file);
+    const mimeType = file.type || 'image/jpeg';
+
+    const resp = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: promptText },
+              { inline_data: { mime_type: mimeType, data: base64 } }
+            ]
+          }],
+          generationConfig: { responseModalities: ['IMAGE'] }
+        })
+      }
+    );
+
+    if(!resp.ok){
+      const errText = await resp.text();
+      throw new Error('API error ' + resp.status + ': ' + errText.slice(0, 200));
+    }
+
+    const data = await resp.json();
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    const imgPart = parts.find(p => p.inlineData || p.inline_data);
+    const inline = imgPart ? (imgPart.inlineData || imgPart.inline_data) : null;
+
+    if(!inline || !inline.data){
+      throw new Error('No image returned — the model may have refused this photo.');
+    }
+
+    const outMime = inline.mimeType || inline.mime_type || 'image/png';
+    const dataUrl = 'data:' + outMime + ';base64,' + inline.data;
+
+    const resultImg = tile.querySelector('.result-img');
+    resultImg.src = dataUrl;
+    resultImg.style.display = 'block';
+
+    status.textContent = 'Done';
+    const meta = tile.querySelector('.meta');
+    let dl = meta.querySelector('.dl');
+    if(!dl){
+      dl = document.createElement('a');
+      dl.className = 'dl';
+      dl.textContent = 'Download';
+      meta.appendChild(dl);
+    }
+    dl.href = dataUrl;
+    dl.download = 'cleaned-' + file.name.replace(/\.[^.]+$/, '') + '.png';
+
+  } catch(err){
+    status.classList.add('err');
+    status.textContent = err.message || 'Failed';
+  }
+}
+
+runBtn.addEventListener('click', async () => {
+  const apiKey = apiKeyInput.value.trim();
+  const promptText = promptInput.value.trim();
+  if(!apiKey){
+    alert('Paste your Gemini API key first.');
+    return;
+  }
+  if(files.length === 0) return;
+
+  runBtn.disabled = true;
+  runBtn.textContent = 'Processing…';
+
+  // Process sequentially to keep it simple and avoid rate-limit bursts.
+  for(let i = 0; i < files.length; i++){
+    await processOne(files[i], i, apiKey, promptText);
+  }
+
+  runBtn.disabled = false;
+  runBtn.textContent = 'Process photos';
+});
+</script>
+</body>
+</html>
