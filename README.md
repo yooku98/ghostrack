@@ -4,6 +4,8 @@ Remove the mannequin or model from product photos, leaving the garment on a clea
 
 Everything runs client-side in your browser. Photos are sent directly from your browser to Google's Gemini API using your own API key; nothing passes through any other server.
 
+**Live demo:** https://yooku98.github.io/ghostrack/ (bring your own Gemini API key)
+
 ## How it works
 
 1. Paste a Gemini API key (get one free at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)).
